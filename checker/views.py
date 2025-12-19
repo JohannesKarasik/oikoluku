@@ -119,11 +119,10 @@ def find_differences_charwise(original: str, corrected: str):
 
 
 def index(request):
-    # Handle AJAX correction (allow anonymous users)
     if request.method == "POST" and request.headers.get("x-requested-with") == "XMLHttpRequest":
-        text = (request.POST.get("text") or "").strip()
+        raw_text = (request.POST.get("text") or "").strip()
 
-        if not text:
+        if not raw_text:
             return JsonResponse({
                 "original_text": "",
                 "corrected_text": "",
@@ -131,17 +130,21 @@ def index(request):
                 "error_count": 0,
             })
 
-        corrected = correct_with_openai_sv(text)
-        differences = find_differences_charwise(text, corrected)
+        # ✅ COLLAPSE ONCE, EARLY, AND USE EVERYWHERE
+        collapsed_text = re.sub(r"\s+", " ", raw_text).strip()
+
+        corrected = correct_with_openai_sv(collapsed_text)
+        differences = find_differences_charwise(collapsed_text, corrected)
 
         return JsonResponse({
-            "original_text": text,
+            "original_text": collapsed_text,   # ✅ collapsed
             "corrected_text": corrected,
             "differences": differences,
             "error_count": len(differences),
         })
 
     return render(request, "checker/index.html")
+
 
 
 from django.contrib.auth.models import User
