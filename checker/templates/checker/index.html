@@ -22,8 +22,8 @@
 <link rel="manifest" href="{% static 'checker/favicon_io/site.webmanifest' %}">
  <meta charset="UTF-8" />
  <meta name="viewport" content="width=device-width, initial-scale=1" />
- <title>Rettskriving Sjekk – Korrektur og Grammatikk på Norsk</title>
- <meta name="description" content="Sjekk rettskriving, grammatikk og tegnsetting på norsk. Bruk vårt gratis korrekturverktøy for feilfri tekst – ingen innlogging, ingen kostnad">
+ <title>Oikoluku & Kieliopin Tarkistus – Ilmainen Työkalu Verkossa</title>
+ <meta name="description" content="Tarkista oikeinkirjoitus ja kielioppi ilmaiseksi suomeksi. Ei rekisteröitymistä. Nopea, tarkka ja helppo oikoluku suoraan selaimessa.">
  <link rel="stylesheet" href="{% static 'checker/main.css' %}">
 </head>
 <body>
@@ -35,124 +35,145 @@
 
 
      <div class="card__body">
-       <header>
-        <h1>Korjaa tekstisi oikeinkirjoituksen tarkistuksella</h1>
-        <p>Oikeinkirjoituksen tarkistus on edistyksellinen ja käyttäjäystävällinen oikolukutyökalu, jonka avulla voit korjata norjan kielen oikeinkirjoitus-, kielioppi-, oikeinkirjoitus- ja välimerkkivirheet muutamassa sekunnissa.</p>
-        
-       </header>
-     </div>
-
-
-     <div class="card__body">
-       <form method="POST" id="form">
-         {% csrf_token %}
-
-
-         <div
-           id="text-editor"
-           class="editor"
-           contenteditable="true"
-           role="textbox"
-           aria-multiline="true"
-           spellcheck="false"
-           placeholder="Lim inn teksten din her..."></div>
-           <p id="length-error" class="length-error" hidden>
-            Teksten er for lang. Du kan rette maks 800 tegn om gangen.
-
-           </p>
-          
-
-
-         <div class="meta" id="counter">
-           <div class="counter" aria-live="polite">
-            <span id="words">0</span> ord
-            <span>·</span>
-            <span id="chars">0</span> tegn
-            
-           </div>
-         </div>
-
-
-         <div class="actions">
-          <button type="submit" id="submit" class="btn btn--primary">
-            <span class="spinner" aria-hidden="true"></span>
-            Rett tekst
-          </button>
-          <button class="btn btn--ghost" id="clear">Tøm</button>
-          
-         </div>
-       </form>
-     </div>
-
-
-     <div class="card__body">
-      <section class="seo seo--rich" aria-labelledby="seo-title">
-
-
-        <style>
-          h1, h2, h3 { color: #2c3e50; }
-          ul { padding-left: 20px; }
-          li { margin-bottom: 10px; }
-          blockquote { border-left: 4px solid #ccc; padding-left: 10px; color: #555; margin: 20px 0; }
-        </style>
-
-        <h1>Kirjoita virheettömästi Rettskriving Sjekk -työkalulla</h1>
-      
-        <p>Rettskriving Sjekk on edistynyt ja helppokäyttöinen oikolukutyökalu, joka auttaa sinua parantamaan kirjoitusvirheitä, kielioppivirheitä, oikeinkirjoitusvirheitä ja välimerkkivirheitä norjan kielessä – sekunneissa.</p>
-      
-        <hr>
-      
-        <h2>Mihin voit käyttää Rettskriving Sjekk -työkalua?</h2>
-        <p>Kirjoitatpa sähköposteja, koulutehtäviä, raportteja, artikkeleita tai sosiaalisen median sisältöä, Rettskriving Sjekk auttaa sinua kirjoittamaan oikein ja ammattimaisesti. Työkalu sopii opiskelijoille, ammattilaisille, opettajille ja kaikille, jotka kirjoittavat norjaksi.</p>
-        <ul>
-          <li><strong>Kieliopin tarkistus:</strong> Löytää ja selittää kielioppivirheet</li>
-          <li><strong>Norjan oikeinkirjoituksen tarkistus:</strong> Korjaa väärin kirjoitetut sanat nopeasti ja tarkasti</li>
-          <li><strong>Välimerkkien tarkistus:</strong> Havaitsee puuttuvat pilkut, pisteet ja muuta</li>
-          <li><strong>Oikea kirjoitusasu ja kielen sujuvuus:</strong> Tekee tekstistä helpommin luettavaa</li>
-          <li><strong>Oikoluku ja kielentarkistus:</strong> Parantaa lauserakennetta ja tyyliä</li>
-        </ul>
-      
-        <hr>
-      
-        <h2>Miksi valita Rettskriving Sjekk?</h2>
-        <ul class="feature-list">
-          <li><span class="check"></span><strong>Ilmainen ja helposti saatavilla</strong>: Ei rekisteröitymistä, ei maksua</li>
-          <li><span class="check"></span><strong>Nopea ja helppo käyttää</strong>: Liitä teksti ja näe tulokset heti</li>
-          <li><span class="check"></span><strong>Rakennettu norjaa varten</strong>: Kehitetty erityisesti norjan kielioppia ja oikeinkirjoitusta varten</li>
-          <li><span class="check"></span><strong>AI-pohjainen teknologia</strong>: Käyttää edistyneitä algoritmeja tarkan korjauksen takaamiseksi</li>
-        </ul>
-        
-      
-        <hr>
-      
-        <h2>Usein kysytyt kysymykset (UKK)</h2>
+      <header>
+        <h1>Oikoluku ja kieliopin tarkistus suomeksi</h1>
         <p>
-          <strong>Onko tämä työkalu todella ilmainen?</strong><br>
-          Kyllä. Rettskriving Sjekk on 100 % ilmainen käyttää, ilman piilokuluja.
+          Tarkista oikeinkirjoitus, kielioppi ja kirjoitusvirheet suomenkielisistä
+          teksteistä helposti ja nopeasti tällä ilmaisella oikolukutyökalulla –
+          suoraan selaimessa.
         </p>
-              
-        <p><strong>Tarvitseeko minun ladata mitään?</strong><br>Ei, kaikki tapahtuu suoraan verkkosivulla – liitä vain teksti ja aloita korjaaminen.</p>
+      </header>
+      </div>
       
+      <div class="card__body">
+        <form method="POST" id="form">
+          {% csrf_token %}
       
-        <hr>
+          <div
+            id="text-editor"
+            class="editor"
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
+            spellcheck="false"
+            placeholder="Liitä teksti tähän..."></div>
       
-        <h2>Aloita oikoluku nyt</h2>
-        <p>Kokeile Rettskriving Sjekk -työkalua alla. Saat nopean, helpon ja tarkan oikoluvun sekunneissa.</p>
+          <p id="length-error" class="length-error" hidden>
+            Teksti on liian pitkä. Voit tarkistaa enintään 800 merkkiä kerrallaan.
+          </p>
       
-        <p><strong>Ei käyttäjärekisteröintiä. Ei kustannuksia. Vain puhdasta, korrektia norjankielistä tekstiä.</strong></p>
+          <div class="meta" id="counter">
+            <div class="counter" aria-live="polite">
+              <span id="words">0</span> sanaa
+              <span>·</span>
+              <span id="chars">0</span> merkkiä
+            </div>
+          </div>
       
-        <hr>
+          <div class="actions">
+            <button type="submit" id="submit" class="btn btn--primary">
+              <span class="spinner" aria-hidden="true"></span>
+              Tarkista teksti
+            </button>
+            <button class="btn btn--ghost" id="clear">Tyhjennä</button>
+          </div>
+        </form>
+      </div>
       
-
+      <div class="card__body">
+        <section class="seo seo--rich" aria-labelledby="seo-title">
       
-        <blockquote>
-          Valmis korjaamaan tekstisi? Vieritä alas ja kokeile Rettskriving Sjekk -työkalua nyt!
-        </blockquote>
+          <style>
+            h1, h2, h3 { color: #2c3e50; }
+            ul { padding-left: 20px; }
+            li { margin-bottom: 10px; }
+            blockquote {
+              border-left: 4px solid #ccc;
+              padding-left: 10px;
+              color: #555;
+              margin: 20px 0;
+            }
+          </style>
       
+          <h1>Oikoluku ja kieliopin tarkistus suomeksi – ilmainen verkkotyökalu</h1>
       
+          <p>
+            Tämä ilmainen oikolukutyökalu auttaa sinua tarkistamaan oikeinkirjoituksen,
+            kieliopin ja kirjoitusvirheet suomenkielisistä teksteistä nopeasti ja
+            luotettavasti.
+          </p>
       
+          <hr>
       
-      </section>
+          <h2>Tarkista oikeinkirjoitus ja kielioppi sekunneissa</h2>
+          <p>
+            Etsitkö helppoa tapaa suorittaa oikoluku ja kieliopin tarkistus suomeksi?
+            Työkalu tunnistaa kirjoitusvirheet, kielioppivirheet, ylimääräiset
+            välilyönnit sekä puuttuvat tai virheelliset välimerkit – täysin verkossa
+            ilman asennuksia.
+          </p>
+      
+          <ul>
+            <li><strong>Oikeinkirjoituksen tarkistus:</strong> Yleisimmät kirjoitusvirheet ja sanamuodot</li>
+            <li><strong>Kieliopin tarkistus:</strong> Rakenteelliset ja kielioppivirheet</li>
+            <li><strong>Välimerkit ja typografia:</strong> Pilkut, pisteet ja muut virheet</li>
+          </ul>
+      
+          <p>
+            Lopputuloksena saat selkeämmän, virheettömän ja ammattimaisemman tekstin.
+          </p>
+      
+          <hr>
+      
+          <h2>Mikä on oikolukutyökalu?</h2>
+          <p>
+            Oikolukutyökalu on tekoälypohjainen sovellus, joka analysoi tekstin
+            kontekstia ja auttaa parantamaan oikeinkirjoitusta, kielioppia ja
+            kirjoitustyyliä kokonaisuutena – ei vain yksittäisiä sanoja.
+          </p>
+      
+          <p>
+            Toisin kuin yksinkertaiset oikolukijat, tämä työkalu huomioi lauserakenteen,
+            sanavalinnat ja kielen vivahteet.
+          </p>
+      
+          <hr>
+      
+          <h2>Miksi tehdä oikoluku verkossa?</h2>
+          <ul class="feature-list">
+            <li><span class="check"></span><strong>Ei asennuksia</strong> – toimii suoraan selaimessa</li>
+            <li><span class="check"></span><strong>Täysin ilmainen</strong> – ei rekisteröitymistä</li>
+            <li><span class="check"></span><strong>Nopea ja tarkka</strong> – tulokset sekunneissa</li>
+            <li><span class="check"></span><strong>Kaikille laitteille</strong> – tietokone, mobiili ja tabletti</li>
+          </ul>
+      
+          <p>
+            Työkalu sopii opiskelijoille, työelämän viestintään, sisällöntuottajille ja
+            kaikille, jotka haluavat kirjoittaa suomea paremmin.
+          </p>
+      
+          <hr>
+      
+          <h2>Aloita oikoluku nyt</h2>
+          <p>
+            Liitä tekstisi yläpuolella olevaan kenttään ja napsauta
+            <strong>"Tarkista teksti"</strong>. Saat välittömästi selkeät
+            korjausehdotukset.
+          </p>
+      
+          <p>
+            <strong>Ei tunnuksia. Ei maksuja. Vain sujuvaa ja korrektia suomen kieltä.</strong>
+          </p>
+      
+          <hr>
+      
+          <blockquote>
+            Valmis parantamaan tekstiäsi? Vieritä ylös ja kokeile oikolukutyökalua nyt!
+          </blockquote>
+      
+        </section>
+      </div>
+      
 
       
      </div>
