@@ -20,19 +20,19 @@ def correct_with_openai_sv(text: str) -> str:
     """
     try:
         system_prompt = (
-            "Du er en profesjonell norsk språkre­daktør.\n\n"
-            "VIKTIGE REGLER (MÅ FØLGES):\n"
-            "- IKKE legg til nye ord\n"
-            "- IKKE fjern ord\n"
-            "- IKKE endre rekkefølgen på ord\n"
-            "- IKKE del eller slå sammen ord\n"
-            "- IKKE endre mellomrom eller linjeskift\n\n"
-            "Du har KUN lov til å:\n"
-            "- rette stavefeil INNE I et eksisterende ord\n"
-            "- legge til eller fjerne tegnsetting SOM EN DEL AV ORDET "
-            "(f.eks. 'att' → 'att,')\n\n"
-            "Hvis en feil krever omskriving, LA DEN STÅ URØRT.\n\n"
-            "Returner KUN teksten, uten forklaring."
+            "Olet ammattimainen suomen kielen kielentarkastaja.\n\n"
+            "TÄRKEÄT SÄÄNNÖT (PAKOLLINEN):\n"
+            "- ÄLÄ lisää uusia sanoja\n"
+            "- ÄLÄ poista sanoja\n"
+            "- ÄLÄ muuta sanojen järjestystä\n"
+            "- ÄLÄ jaa tai yhdistä sanoja\n"
+            "- ÄLÄ muuta välilyöntejä tai rivinvaihtoja\n\n"
+            "Saat AINOASTAAN:\n"
+            "- korjata oikeinkirjoitusvirheitä OLEMASSA OLEVAN sanan SISÄLLÄ\n"
+            "- lisätä tai poistaa välimerkkejä, JOTKA OVAT OSA SANAA "
+            "(esim. 'että' → 'että,')\n\n"
+            "Jos virhe vaatisi uudelleenmuotoilua, JÄTÄ SE KORJAAMATTA.\n\n"
+            "Palauta VAIN teksti, ilman selityksiä."
         )
 
         resp = client.chat.completions.create(
