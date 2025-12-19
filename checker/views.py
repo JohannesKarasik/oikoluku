@@ -12,20 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def correct_with_openai_sv(text: str) -> str:
-    """
-    Returns a corrected version of the text where:
-    - NO words are added or removed
-    - Word order is identical
-    - Only spelling and punctuation attached to a word may change
-    """
     try:
-        # 🔹 Normalize line breaks → single spaces
-        text = (
-            text
-            .replace("\r\n", " ")
-            .replace("\r", " ")
-            .replace("\n", " ")
-        )
+        # 🔹 Collapse all whitespace (line breaks, multiple spaces, etc.)
+        text = re.sub(r"\s+", " ", text).strip()
 
         system_prompt = (
             "Olet ammattimainen suomen kielen kielentarkastaja.\n\n"
@@ -54,7 +43,6 @@ def correct_with_openai_sv(text: str) -> str:
 
         corrected = (resp.choices[0].message.content or "").strip()
 
-        # HARD SAFETY: word count must match exactly
         if len(corrected.split()) != len(text.split()):
             logger.warning("Word count mismatch – falling back to original text")
             return text
