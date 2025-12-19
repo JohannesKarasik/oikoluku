@@ -19,6 +19,14 @@ def correct_with_openai_sv(text: str) -> str:
     - Only spelling and punctuation attached to a word may change
     """
     try:
+        # 🔹 Normalize line breaks → single spaces
+        text = (
+            text
+            .replace("\r\n", " ")
+            .replace("\r", " ")
+            .replace("\n", " ")
+        )
+
         system_prompt = (
             "Olet ammattimainen suomen kielen kielentarkastaja.\n\n"
             "TÄRKEÄT SÄÄNNÖT (PAKOLLINEN):\n"
