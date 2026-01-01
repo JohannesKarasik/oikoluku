@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -134,3 +135,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
+
+
+
+STRIPE_MODE = os.getenv("STRIPE_MODE", "live")
+
+if STRIPE_MODE == "live":
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_LIVE_SECRET_KEY")
+    STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_LIVE_PUBLISHABLE_KEY")
+    STRIPE_PRICE_ID = os.getenv("STRIPE_LIVE_PRICE_ID")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_LIVE_WEBHOOK_SECRET")
+else:
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_TEST_SECRET_KEY")
+    STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_TEST_PUBLISHABLE_KEY")
+    STRIPE_PRICE_ID = os.getenv("STRIPE_TEST_PRICE_ID")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_TEST_WEBHOOK_SECRET")
