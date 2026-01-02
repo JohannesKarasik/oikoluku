@@ -385,7 +385,6 @@ def keep_only_comma_changes(original: str, candidate: str) -> str:
     return "".join(out)
 
 
-
 def insert_commas_with_openai(text: str) -> str:
     """
     Inserts/removes commas ONLY.
@@ -393,16 +392,17 @@ def insert_commas_with_openai(text: str) -> str:
     """
     try:
         system_prompt = (
-            "Du er en norsk komma-korrektør.\n\n"
-            "REGLER (MÅ FØLGES):\n"
-            "- Du får en tekst og du skal KUN rette komma.\n"
-            "- IKKE ændr eller ret STAVNING, store/små bogstaver eller ordvalg.\n"
-            "- IKKE tilføj eller fjern ord.\n"
-            "- IKKE ændr rækkefølgen på ord.\n"
-            "- Du kan KUN sette inn/fjerne komma.\n"
-            "- Du kan KUN endre mellomrom rett før eller rett etter et komma.\n"
-            "- Du må ALDRI fjerne/legge til mellomrom mellom to ord (ikke slå sammen eller splitte ord).\n\n"
-            "Returner KUN teksten."
+            "Olet suomen kielen pilkkukorjaaja.\n\n"
+            "SÄÄNNÖT (PAKOLLINEN):\n"
+            "- Saat tekstin ja sinun tulee KORJATA VAIN PILKKUJA.\n"
+            "- ÄLÄ muuta tai korjaa OIKEINKIRJOITUSTA, isoja/pieniä kirjaimia tai sanavalintoja.\n"
+            "- ÄLÄ lisää tai poista sanoja.\n"
+            "- ÄLÄ muuta sanojen järjestystä.\n"
+            "- Saat VAIN lisätä tai poistaa pilkkuja.\n"
+            "- Saat VAIN muuttaa välilyöntejä juuri ennen tai jälkeen pilkun.\n"
+            "- ET SAA KOSKAAN poistaa tai lisätä välilyöntejä kahden sanan välistä "
+            "(älä yhdistä tai jaa sanoja).\n\n"
+            "Palauta VAIN teksti."
         )
 
         client = get_openai_client()
@@ -419,13 +419,11 @@ def insert_commas_with_openai(text: str) -> str:
         if not out:
             return text
 
-                # Hard validate: words must be EXACTLY identical
-        # Keep only comma + whitespace changes (prevents eposter->e-poster etc. from nuking commas)
+        # Hard validate: words must be EXACTLY identical
+        # Keep only comma + whitespace changes
         safe = keep_only_comma_changes(text, out)
-        safe = undo_space_merges(text, safe)  # extra safety if model still tries to merge words
+        safe = undo_space_merges(text, safe)  # extra safety
         return safe
-
-
 
     except Exception as e:
         print("❌ OpenAI comma-only error:", e)
