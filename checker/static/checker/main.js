@@ -326,6 +326,21 @@ document.addEventListener("click", (e) => {
       }
   
       const data = await res.json();
+
+      // 🚫 HARD STOP on backend errors
+      if (!res.ok || data.error) {
+        submit.disabled = false;
+        submit.classList.remove("is-loading");
+      
+        if (data.error === "auth_required") {
+          window.openRegisterModal?.() || window.openAuthModal?.();
+        } else if (data.error === "payment_required") {
+          window.openPaymentModal?.();
+        }
+      
+        return; // ⬅️ CRITICAL
+      }
+      
       const diffs = getWordDiffs(
         data.original_text,
         data.corrected_text
