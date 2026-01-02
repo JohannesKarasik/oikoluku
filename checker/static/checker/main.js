@@ -347,11 +347,12 @@ document.addEventListener("click", (e) => {
       );
   
       editor.innerHTML = buildHighlightedHTML(
-        data.original_text,
+        data.corrected_text,
         diffs
       );
-  
-      lastPlainText = data.original_text;
+      
+      lastPlainText = data.corrected_text;
+      
       sessionStorage.setItem("tc_text", lastPlainText);
       updateCounts(lastPlainText);
   
