@@ -11,7 +11,9 @@ class Profile(models.Model):
         related_name="profile"
     )
     is_paying = models.BooleanField(default=False)
+
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

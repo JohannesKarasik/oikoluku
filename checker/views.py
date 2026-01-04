@@ -973,16 +973,21 @@ def stripe_webhook(request):
         try:
             user = User.objects.get(id=user_id)
             profile, _ = Profile.objects.get_or_create(user=user)
+
             profile.is_paying = True
             profile.stripe_customer_id = session.get("customer")
             profile.stripe_subscription_id = session.get("subscription")
-            profile.save()
+            profile.save(update_fields=[
+                "is_paying",
+                "stripe_customer_id",
+                "stripe_subscription_id"
+            ])
 
-            profile.save()
         except User.DoesNotExist:
             pass
 
     return HttpResponse(status=200)
+
 
 
 
