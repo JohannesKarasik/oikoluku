@@ -746,6 +746,12 @@
 .pay-modal__cta:focus-visible { outline: none; box-shadow: var(--pm-ring); }
 
  </style>
+
+<script>
+  window.IS_PAYING = {{ is_paying|yesno:"true,false" }};
+</script>
+
+
  <script>
   (function () {
   console.log("✅ main.js loaded");
@@ -1085,8 +1091,13 @@ document.addEventListener("click", (e) => {
   }
 
   if (data?.error === "payment_required") {
-    window.openPaymentModal?.();
+  if (window.IS_PAYING === true) {
+    // 🚫 backend desync safety — do NOTHING
+    return;
   }
+  window.openPaymentModal?.();
+}
+
 
   return; // ⬅️ CRITICAL: prevents highlight rendering after modal
 }
