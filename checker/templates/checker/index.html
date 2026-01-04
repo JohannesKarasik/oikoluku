@@ -796,6 +796,13 @@
     console.log("🌍 GLOBAL CLICK:", e.target);
   });
 
+
+  let appliedCorrections = 0;
+const FREE_CORRECTIONS = 1;
+
+window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};
+
+
   function openAuthModal(){
     window.openAuthModal && window.openAuthModal();
   }
@@ -946,25 +953,41 @@ if (!tooltip) {
 window.__tcTooltip = tooltip;
 
 
-  editor.addEventListener("click", (e) => {
-    console.log("🖱️ Editor clicked:", e.target);
-    const error = e.target.closest(".error");
-    if (!error) return;
-  
-    activeError = error;
-    console.log("❗ Active error set:", activeError, {
-      original: error.dataset.original,
-      suggestion: error.dataset.suggestion
-    });
-  
-    // 1️⃣ Inject tooltip content
-    tooltip.innerHTML = `
-      <div class="suggestion">${error.dataset.suggestion}</div>
-      <div class="actions">
-        <button type="button" class="apply">Tillämpa</button>
-        <button type="button" class="dismiss">Avvisa</button>
-      </div>
-    `;
+editor.addEventListener("click", (e) => {
+  const error = e.target.closest(".error");
+  if (!error) return;
+
+  // 🔒 Gate SECOND interaction
+  if (appliedCorrections >= FREE_CORRECTIONS) {
+
+    // 1️⃣ Not logged in → register
+    if (!window.IS_AUTHENTICATED) {
+      window.openRegisterModal?.();
+      return;
+    }
+
+    // 2️⃣ Logged in but not paid → payment
+    if (!window.IS_PAYING) {
+      window.openPaymentModal?.();
+      return;
+    }
+  }
+
+  // ✅ Allowed
+  activeError = error;
+
+  tooltip.innerHTML = `
+    <div class="suggestion">${error.dataset.suggestion}</div>
+    <div class="actions">
+      <button type="button" class="apply">Käytä</button>
+      <button type="button" class="dismiss">Hylkää</button>
+    </div>
+  `;
+
+  positionTooltip(error);
+});
+
+
   
     // 2️⃣ Force render (hidden) so dimensions are REAL
     tooltip.style.visibility = "hidden";
@@ -1015,9 +1038,11 @@ document.addEventListener("click", (e) => {
   if (!activeError) return;
 
   if (applyBtn) {
-    const suggestion = activeError.dataset.suggestion || "";
-    activeError.replaceWith(document.createTextNode(suggestion));
-  } else {
+  const suggestion = activeError.dataset.suggestion || "";
+  activeError.replaceWith(document.createTextNode(suggestion));
+
+  appliedCorrections += 1;
+} else {
     const original = activeError.dataset.original || "";
     activeError.replaceWith(document.createTextNode(original));
   }
@@ -1104,19 +1129,7 @@ document.addEventListener("click", (e) => {
         },
         body: new URLSearchParams({ text }),
       });
-  
-      // 🔐 NOT LOGGED IN
-      if (res.status === 401) {
-        submit.disabled = false;
-        submit.classList.remove("is-loading");
-  
-        if (window.openRegisterModal) {
-          window.openRegisterModal();
-        } else if (window.openAuthModal) {
-          window.openAuthModal();
-        }
-        return;
-      }
+
   
       const data = await res.json();
 
@@ -1125,17 +1138,7 @@ document.addEventListener("click", (e) => {
       submit.disabled = false;
       submit.classList.remove("is-loading");
 
-      if (data?.error === "auth_required") {
-        window.openRegisterModal?.() || window.openAuthModal?.();
-        return;
-      }
 
-      if (data?.error === "payment_required") {
-        if (!window.IS_PAYING) {
-          window.openPaymentModal?.();
-        }
-        return;
-      }
 
       return;
     }

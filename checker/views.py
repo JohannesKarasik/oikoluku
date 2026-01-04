@@ -270,16 +270,17 @@ def index(request):
     # AJAX TEXT CORRECTION
     # =========================
     if request.method == "POST" and request.headers.get("x-requested-with") == "XMLHttpRequest":
-        if not request.user.is_authenticated:
-            return JsonResponse({"error": "auth_required"}, status=401)
+# 🔓 Allow anonymous users to get corrections
+        user = request.user if request.user.is_authenticated else None
 
-        profile = getattr(request.user, "profile", None)
+        profile = getattr(user, "profile", None) if user else None
+        is_paying = bool(profile and profile.is_paying)
 
-        if profile is None:
-            return JsonResponse({"error": "payment_required"}, status=402)
+        # 🔓 Allow anonymous & unpaid users to get corrections
+        user = request.user if request.user.is_authenticated else None
+        profile = getattr(user, "profile", None) if user else None
+        is_paying = bool(profile and profile.is_paying)
 
-        if profile.is_paying is not True:
-            return JsonResponse({"error": "payment_required"}, status=402)
 
 
         text = normalize_pasted_text(request.POST.get("text", ""))
