@@ -783,295 +783,498 @@
 }
 
  </style>
+
 <script>
-  (function () {
-    console.log("✅ main.js loaded");
-  
-    /* ===============================
-       GLOBAL STATE
-    =============================== */
-    let appliedCorrections = 0;
-    const FREE_CORRECTIONS = 1;
-  
-    window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};
-  
-    const MAX_WORDS = 800;
-  
-    /* ===============================
-       HELPERS
-    =============================== */
-    function countWords(text) {
-      return (text.trim().match(/\S+/g) || []).length;
+  window.IS_PAYING = {{ is_paying|yesno:"true,false" }};
+</script>
+
+<script>
+(function () {
+  console.log("✅ main.js loaded");
+  document.addEventListener("click", (e) => {
+    console.log("🌍 GLOBAL CLICK:", e.target);
+  });
+
+  let appliedCorrections = 0;
+  const FREE_CORRECTIONS = 1;
+
+  window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};
+
+  function openAuthModal() {
+    window.openAuthModal && window.openAuthModal();
+  }
+
+  const MAX_WORDS = 800;
+
+  function countWords(text) {
+    return (text.trim().match(/\S+/g) || []).length;
+  }
+
+  const errorEl = document.getElementById("length-error");
+
+  function enforceLengthLimit(text) {
+    const wordCount = countWords(text);
+    const tooLong = wordCount > MAX_WORDS;
+
+    submit.disabled = tooLong;
+    submit.classList.toggle("is-disabled", tooLong);
+
+    editor.classList.toggle("is-too-long", tooLong);
+
+    if (errorEl) {
+      errorEl.hidden = !tooLong;
+      errorEl.textContent = "Texten är för lång. Du kan rätta max 800 ord åt gången.";
     }
-  
-    function escapeHTML(str) {
-      return (str || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+  }
+
+  const $ = (s, scope = document) => scope.querySelector(s);
+
+  const editor   = $("#text-editor");
+  const wordsEl  = $("#words");
+  const charsEl  = $("#chars");
+  const form     = $("#form");
+  const submit   = $("#submit");
+  const clearBtn = $("#clear");
+
+  if (!editor || !form) return;
+
+  let lastPlainText = "";
+  let CURRENT_DIFFS = [];
+  let activeError = null;
+
+  /* -------------------------------
+     TEXT HELPERS
+  --------------------------------*/
+  function escapeHTML(str) {
+    return (str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function htmlWithNewlines(str) {
+    return escapeHTML(str).replace(/\n/g, "<br>");
+  }
+
+  function getPlainText() {
+    return (editor.innerText || "").replace(/\u00A0/g, " ");
+  }
+
+  function updateCounts(text) {
+    const t = text || "";
+    wordsEl.textContent = (t.trim().match(/\S+/g) || []).length;
+    charsEl.textContent = t.length;
+  }
+
+  /* -------------------------------
+     WORD-LEVEL DIFF
+  --------------------------------*/
+  function tokenizeWords(text) {
+    const tokens = [];
+    // ✅ include optional punctuation as part of the "word" so apply actually changes text
+    const regex = /\p{L}+[.,;:!?]?/gu;
+    let match;
+
+    while ((match = regex.exec(text))) {
+      tokens.push({
+        word: match[0],
+        start: match.index,
+        end: match.index + match[0].length,
+      });
     }
-  
-    function htmlWithNewlines(str) {
-      return escapeHTML(str).replace(/\n/g, "<br>");
-    }
-  
-    /* ===============================
-       DOM REFERENCES
-    =============================== */
-    const $ = (s, scope = document) => scope.querySelector(s);
-  
-    const editor   = $("#text-editor");
-    const wordsEl  = $("#words");
-    const charsEl  = $("#chars");
-    const form     = $("#form");
-    const submit   = $("#submit");
-    const clearBtn = $("#clear");
-    const errorEl  = $("#length-error");
-    const tooltip  = document.getElementById("tooltip-portal");
-  
-    if (!editor || !form || !tooltip) return;
-  
-    /* ===============================
-       TEXT STATE
-    =============================== */
-    let lastPlainText = "";
-    let CURRENT_DIFFS = [];
-    let activeError = null;
-  
-    /* ===============================
-       COUNTERS & LIMIT
-    =============================== */
-    function updateCounts(text) {
-      const t = text || "";
-      wordsEl.textContent = (t.trim().match(/\S+/g) || []).length;
-      charsEl.textContent = t.length;
-    }
-  
-    function enforceLengthLimit(text) {
-      const tooLong = countWords(text) > MAX_WORDS;
-      submit.disabled = tooLong;
-      editor.classList.toggle("is-too-long", tooLong);
-      if (errorEl) errorEl.hidden = !tooLong;
-    }
-  
-    function getPlainText() {
-      return (editor.innerText || "").replace(/\u00A0/g, " ");
-    }
-  
-    /* ===============================
-       DIFF LOGIC
-    =============================== */
-    function tokenizeWords(text) {
-      const regex = /\p{L}+[.,;:!?]?/gu;
-      const tokens = [];
-      let m;
-      while ((m = regex.exec(text))) {
-        tokens.push({
-          word: m[0],
-          start: m.index,
-          end: m.index + m[0].length,
+    return tokens;
+  }
+
+  function getWordDiffs(original, corrected) {
+    const oWords = tokenizeWords(original);
+    const cWords = tokenizeWords(corrected);
+
+    const diffs = [];
+    const len = Math.min(oWords.length, cWords.length);
+
+    for (let i = 0; i < len; i++) {
+      if (oWords[i].word !== cWords[i].word) {
+        diffs.push({
+          start: oWords[i].start,
+          end: oWords[i].end,
+          original: oWords[i].word,
+          suggestion: cWords[i].word,
         });
       }
-      return tokens;
     }
-  
-    function getWordDiffs(original, corrected) {
-      const o = tokenizeWords(original);
-      const c = tokenizeWords(corrected);
-      const diffs = [];
-  
-      for (let i = 0; i < Math.min(o.length, c.length); i++) {
-        if (o[i].word !== c[i].word) {
-          diffs.push({
-            start: o[i].start,
-            end: o[i].end,
-            original: o[i].word,
-            suggestion: c[i].word,
-          });
-        }
+    return diffs;
+  }
+
+  /* -------------------------------
+     RENDER HIGHLIGHTS
+  --------------------------------*/
+  function buildHighlightedHTML(text, diffs) {
+    if (!diffs.length) return htmlWithNewlines(text);
+
+    let html = "";
+    let last = 0;
+
+    // ✅ use index i instead of diffs.indexOf(d) (more reliable)
+    for (let i = 0; i < diffs.length; i++) {
+      const d = diffs[i];
+      html += htmlWithNewlines(text.slice(last, d.start));
+      html += `<span class="error" data-diff-index="${i}">${escapeHTML(
+        text.slice(d.start, d.end)
+      )}</span>`;
+      last = d.end;
+    }
+
+    html += htmlWithNewlines(text.slice(last));
+    return html;
+  }
+
+  /* -------------------------------
+     TOOLTIP PORTAL (REUSE EXISTING)
+  --------------------------------*/
+  const tooltip = document.getElementById("tooltip-portal");
+
+  if (!tooltip) {
+    console.error("❌ tooltip-portal not found — it must be created in index.html");
+    return;
+  } else {
+    console.log("✅ Reusing existing tooltip:", tooltip);
+  }
+
+  window.__tcTooltip = tooltip;
+
+  function positionTooltip(errorEl) {
+    // Force render so size is measurable
+    tooltip.style.visibility = "hidden";
+    tooltip.style.display = "block";
+    tooltip.style.left = "0px";
+    tooltip.style.top = "0px";
+    tooltip.style.transform = "none";
+
+    const wordRect = errorEl.getBoundingClientRect();
+    const tipRect  = tooltip.getBoundingClientRect();
+
+    const GAP = 12;
+    const PADDING = 8;
+
+    let top = wordRect.top - tipRect.height - GAP;
+    if (top < PADDING) {
+      top = wordRect.bottom + GAP;
+    }
+
+    let left = wordRect.left + wordRect.width / 2;
+    const minLeft = PADDING + tipRect.width / 2;
+    const maxLeft = window.innerWidth - PADDING - tipRect.width / 2;
+    left = Math.max(minLeft, Math.min(maxLeft, left));
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.transform = "translateX(-50%)";
+    tooltip.style.visibility = "visible";
+    tooltip.classList.add("visible");
+  }
+
+  /* -------------------------------
+     CLICK HIGHLIGHT
+  --------------------------------*/
+  editor.addEventListener("click", (e) => {
+    const err = e.target.closest(".error");
+    if (!err) return;
+
+    // 🔒 Gate SECOND interaction
+    if (appliedCorrections >= FREE_CORRECTIONS) {
+      // 1️⃣ Not logged in → register
+      if (!window.IS_AUTHENTICATED) {
+        window.openRegisterModal?.();
+        return;
       }
-      return diffs;
+      // 2️⃣ Logged in but not paid → payment
+      if (!window.IS_PAYING) {
+        window.openPaymentModal?.();
+        return;
+      }
     }
-  
-    function buildHighlightedHTML(text, diffs) {
-      if (!diffs.length) return htmlWithNewlines(text);
-  
-      let html = "";
-      let last = 0;
-  
-      diffs.forEach((d, i) => {
-        html += htmlWithNewlines(text.slice(last, d.start));
-        html += `<span class="error" data-diff-index="${i}">${escapeHTML(
-          text.slice(d.start, d.end)
-        )}</span>`;
-        last = d.end;
-      });
-  
-      html += htmlWithNewlines(text.slice(last));
-      return html;
-    }
-  
-    /* ===============================
-       TOOLTIP POSITION
-    =============================== */
-    function positionTooltip(error) {
-      tooltip.style.display = "block";
-      tooltip.style.visibility = "hidden";
-  
-      const w = error.getBoundingClientRect();
-      const t = tooltip.getBoundingClientRect();
-      const GAP = 12;
-  
-      let top = w.top - t.height - GAP;
-      if (top < 8) top = w.bottom + GAP;
-  
-      let left = w.left + w.width / 2;
-      left = Math.max(t.width / 2 + 8, Math.min(window.innerWidth - t.width / 2 - 8, left));
-  
-      tooltip.style.top = `${top}px`;
-      tooltip.style.left = `${left}px`;
-      tooltip.style.transform = "translateX(-50%)";
-      tooltip.style.visibility = "visible";
-      tooltip.classList.add("visible");
-    }
-  
-    /* ===============================
-       ERROR CLICK
-    =============================== */
-    editor.addEventListener("click", (e) => {
-      const error = e.target.closest(".error");
-      if (!error) return;
-  
-      if (appliedCorrections >= FREE_CORRECTIONS) {
-        if (!window.IS_AUTHENTICATED) {
-          window.openRegisterModal?.();
+
+    activeError = err;
+
+    const diff = CURRENT_DIFFS[Number(err.dataset.diffIndex)];
+    if (!diff) return; // safety
+
+    tooltip.innerHTML = `
+      <div class="suggestion">${escapeHTML(diff.suggestion || "")}</div>
+      <div class="actions">
+        <button type="button" class="apply">Käytä</button>
+        <button type="button" class="dismiss">Hylkää</button>
+      </div>
+    `;
+
+    positionTooltip(err);
+  });
+
+  /* -------------------------------
+     APPLY / DISMISS
+  --------------------------------*/
+  document.addEventListener(
+    "click",
+    (e) => {
+      const applyBtn = e.target.closest("#tooltip-portal .apply");
+      const dismissBtn = e.target.closest("#tooltip-portal .dismiss");
+      if (!applyBtn && !dismissBtn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!activeError) return;
+
+      const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
+      if (!diff) {
+        console.error("❌ Missing diff for activeError");
+        return;
+      }
+
+      if (applyBtn) {
+        if (!diff.suggestion) {
+          console.error("❌ Empty suggestion — aborting apply", diff);
           return;
         }
-        if (!window.IS_PAYING) {
-          window.openPaymentModal?.();
+        activeError.replaceWith(document.createTextNode(diff.suggestion));
+        appliedCorrections += 1;
+      } else {
+        if (!diff.original) {
+          console.error("❌ Empty original — aborting dismiss", diff);
           return;
         }
+        activeError.replaceWith(document.createTextNode(diff.original));
       }
-  
-      activeError = error;
-      const diff = CURRENT_DIFFS[Number(error.dataset.diffIndex)];
-      if (!diff) return;
-  
-      tooltip.innerHTML = `
-        <div class="suggestion">${escapeHTML(diff.suggestion)}</div>
-        <div class="actions">
-          <button type="button" class="apply">Käytä</button>
-          <button type="button" class="dismiss">Hylkää</button>
-        </div>
-      `;
-  
-      positionTooltip(error);
-    });
-  
-    /* ===============================
-       APPLY / DISMISS
-    =============================== */
-    document.addEventListener(
-      "click",
-      (e) => {
-        const applyBtn = e.target.closest("#tooltip-portal .apply");
-        const dismissBtn = e.target.closest("#tooltip-portal .dismiss");
-        if (!applyBtn && !dismissBtn) return;
-        if (!activeError) return;
-  
-        e.preventDefault();
-        e.stopPropagation();
-  
-        const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
-        if (!diff) return;
-  
-        if (applyBtn) {
-          activeError.replaceWith(document.createTextNode(diff.suggestion));
-          appliedCorrections += 1;
-        } else {
-          activeError.replaceWith(document.createTextNode(diff.original));
-        }
-  
-        lastPlainText = getPlainText();
-        sessionStorage.setItem("tc_text", lastPlainText);
-        updateCounts(lastPlainText);
-  
-        tooltip.classList.remove("visible");
-        tooltip.style.display = "none";
-        activeError = null;
-      },
-      true
-    );
-  
-    /* ===============================
-       INIT
-    =============================== */
-    const saved = sessionStorage.getItem("tc_text");
-    if (saved) {
-      lastPlainText = saved;
-      editor.innerHTML = htmlWithNewlines(saved);
-    }
-    updateCounts(lastPlainText);
-  
-    /* ===============================
-       INPUT
-    =============================== */
-    editor.addEventListener("input", () => {
+
       lastPlainText = getPlainText();
       sessionStorage.setItem("tc_text", lastPlainText);
       updateCounts(lastPlainText);
-      enforceLengthLimit(lastPlainText);
-    });
-  
-    clearBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      editor.innerHTML = "";
-      lastPlainText = "";
-      sessionStorage.removeItem("tc_text");
-      updateCounts("");
-    });
-  
-    /* ===============================
-       SUBMIT
-    =============================== */
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = lastPlainText.trim();
-      if (!text) return;
-  
-      if (countWords(text) > MAX_WORDS) {
-        enforceLengthLimit(text);
-        return;
-      }
-  
-      submit.disabled = true;
-      submit.classList.add("is-loading");
-  
-      try {
-        const res = await fetch("/", {
-          method: "POST",
-          headers: {
-            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
-            "X-Requested-With": "XMLHttpRequest",
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({ text }),
-        });
-  
-        const data = await res.json();
-        if (!res.ok) return;
-  
-        CURRENT_DIFFS = data.differences || [];
-        editor.innerHTML = buildHighlightedHTML(data.original_text, CURRENT_DIFFS);
-        lastPlainText = data.original_text;
-  
-        sessionStorage.setItem("tc_text", lastPlainText);
-        updateCounts(lastPlainText);
-      } finally {
+
+      tooltip.classList.remove("visible");
+      tooltip.style.display = "none";
+      activeError = null;
+    },
+    true
+  );
+
+  /* -------------------------------
+     INIT
+  --------------------------------*/
+  const saved = sessionStorage.getItem("tc_text");
+  if (saved) {
+    lastPlainText = saved;
+    editor.innerHTML = htmlWithNewlines(saved);
+  }
+
+  updateCounts(lastPlainText);
+  editor.focus();
+
+  /* -------------------------------
+     INPUT
+  --------------------------------*/
+  editor.addEventListener("input", () => {
+    lastPlainText = getPlainText();
+    sessionStorage.setItem("tc_text", lastPlainText);
+    updateCounts(lastPlainText);
+    enforceLengthLimit(lastPlainText);
+  });
+
+  clearBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    editor.innerHTML = "";
+    lastPlainText = "";
+    sessionStorage.removeItem("tc_text");
+    updateCounts("");
+    editor.focus();
+  });
+
+  /* -------------------------------
+     SUBMIT
+  --------------------------------*/
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const text = lastPlainText.trim();
+    if (!text) return;
+
+    // 🚫 HARD STOP — NEVER allow loading when too long
+    if (countWords(text) > MAX_WORDS) {
+      enforceLengthLimit(text);
+      submit.disabled = false;
+      submit.classList.remove("is-loading");
+      return;
+    }
+
+    // ✅ Only now we allow loading
+    submit.disabled = true;
+    submit.classList.add("is-loading");
+
+    try {
+      const res = await fetch("/", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ text }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
         submit.disabled = false;
         submit.classList.remove("is-loading");
+        return;
+      }
+
+      CURRENT_DIFFS = data.differences || [];
+
+      editor.innerHTML = buildHighlightedHTML(
+        data.original_text,
+        CURRENT_DIFFS
+      );
+
+      // ✅ IMPORTANT: lastPlainText MUST stay original
+      lastPlainText = data.original_text;
+
+      sessionStorage.setItem("tc_text", lastPlainText);
+      updateCounts(lastPlainText);
+    } catch (err) {
+      console.error("Submit error:", err);
+    } finally {
+      submit.disabled = false;
+      submit.classList.remove("is-loading");
+    }
+  });
+})();
+</script>
+
+<script>
+  // Login modal
+  const authModal = document.getElementById("auth-modal");
+  const authClose = document.getElementById("auth-close");
+
+  // Register modal
+  const registerModal = document.getElementById("register-modal");
+  const registerClose = document.getElementById("register-close");
+
+  // Switch buttons
+  const openRegisterBtn = document.getElementById("open-register");
+  const openLoginBtn = document.getElementById("open-login");
+
+  function openAuthModal() {
+    authModal.classList.add("active");
+    authModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeAuthModal() {
+    authModal.classList.remove("active");
+    authModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openRegisterModal() {
+    closeAuthModal();
+    registerModal.classList.add("active");
+    registerModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeRegisterModal() {
+    registerModal.classList.remove("active");
+    registerModal.setAttribute("aria-hidden", "true");
+  }
+
+  // Close handlers
+  authClose?.addEventListener("click", closeAuthModal);
+  authModal?.querySelector(".modal__overlay")?.addEventListener("click", closeAuthModal);
+
+  registerClose?.addEventListener("click", closeRegisterModal);
+  registerModal?.querySelector(".modal__overlay")?.addEventListener("click", closeRegisterModal);
+
+  // Switch between modals
+  openRegisterBtn?.addEventListener("click", () => {
+    closeAuthModal();
+    openRegisterModal();
+  });
+
+  openLoginBtn?.addEventListener("click", () => {
+    closeRegisterModal();
+    openAuthModal();
+  });
+
+  // Make functions available to main.js
+  window.openAuthModal = openAuthModal;
+  window.openRegisterModal = openRegisterModal;
+</script>
+
+<script>
+  (function () {
+    const modal = document.getElementById("paymentModal");
+
+    function openPaymentModal() {
+      if (!modal) {
+        console.error("❌ paymentModal not found");
+        return;
+      }
+      modal.hidden = false;
+    }
+
+    function closePaymentModal() {
+      if (!modal) return;
+      modal.hidden = true;
+    }
+
+    modal?.querySelector(".pay-modal__close")
+      ?.addEventListener("click", closePaymentModal);
+
+    modal?.querySelector("[data-close-modal]")
+      ?.addEventListener("click", closePaymentModal);
+
+    // 🔑 expose globally
+    window.openPaymentModal = openPaymentModal;
+  })();
+</script>
+
+<script>
+  (function () {
+    const checkoutBtn = document.getElementById("start-checkout");
+    if (!checkoutBtn) return;
+
+    checkoutBtn.addEventListener("click", async function (e) {
+      e.preventDefault();
+
+      try {
+        const csrfToken = document.querySelector("input[name=csrfmiddlewaretoken]")?.value;
+
+        if (!csrfToken) {
+          alert("Sikkerhetstoken mangler. Last siden på nytt.");
+          return;
+        }
+
+        const res = await fetch("/create-checkout-session/", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+        });
+
+        if (!res.ok) {
+          throw new Error("Checkout request failed");
+        }
+
+        const data = await res.json();
+
+        if (!data.url) {
+          throw new Error("Stripe URL mangler");
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        console.error("Stripe checkout error:", err);
+        alert("Noe gikk galt. Prøv igjen om et øyeblikk.");
       }
     });
   })();
-  </script>
-  
+</script>
