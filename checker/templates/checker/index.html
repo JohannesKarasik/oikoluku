@@ -955,6 +955,38 @@ if (!tooltip) {
 window.__tcTooltip = tooltip;
 
 
+function positionTooltip(error) {
+  // Force render so size is measurable
+  tooltip.style.visibility = "hidden";
+  tooltip.style.display = "block";
+  tooltip.style.left = "0px";
+  tooltip.style.top = "0px";
+  tooltip.style.transform = "none";
+
+  const wordRect = error.getBoundingClientRect();
+  const tipRect  = tooltip.getBoundingClientRect();
+
+  const GAP = 12;
+  const PADDING = 8;
+
+  let top = wordRect.top - tipRect.height - GAP;
+  if (top < PADDING) {
+    top = wordRect.bottom + GAP;
+  }
+
+  let left = wordRect.left + wordRect.width / 2;
+  const minLeft = PADDING + tipRect.width / 2;
+  const maxLeft = window.innerWidth - PADDING - tipRect.width / 2;
+  left = Math.max(minLeft, Math.min(maxLeft, left));
+
+  tooltip.style.top = `${top}px`;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.transform = "translateX(-50%)";
+  tooltip.style.visibility = "visible";
+  tooltip.classList.add("visible");
+}
+
+
 editor.addEventListener("click", (e) => {
   const error = e.target.closest(".error");
   if (!error) return;
@@ -994,39 +1026,7 @@ tooltip.innerHTML = `
 
 
   
-    // 2️⃣ Force render (hidden) so dimensions are REAL
-    tooltip.style.visibility = "hidden";
-    tooltip.style.display = "block";
-    tooltip.style.left = "0px";
-    tooltip.style.top = "0px";
-    tooltip.style.transform = "none";
-  
-    // 3️⃣ Measure
-    const wordRect = error.getBoundingClientRect();
-    const tipRect  = tooltip.getBoundingClientRect();
-  
-    const GAP = 12;
-    const PADDING = 8;
-  
-    // 4️⃣ Position ABOVE word (fallback BELOW if needed)
-    let top = wordRect.top - tipRect.height - GAP;
-    if (top < PADDING) {
-      top = wordRect.bottom + GAP;
-    }
-  
-    // 5️⃣ Center horizontally + clamp to viewport
-    let left = wordRect.left + wordRect.width / 2;
-    const minLeft = PADDING + tipRect.width / 2;
-    const maxLeft = window.innerWidth - PADDING - tipRect.width / 2;
-    left = Math.max(minLeft, Math.min(maxLeft, left));
-  
-    // 6️⃣ Apply final position & show
-    tooltip.style.top = `${top}px`;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.transform = "translateX(-50%)";
-    tooltip.style.visibility = "visible";
-    tooltip.classList.add("visible");
-  });
+
 
   /* -------------------------------
      APPLY / DISMISS (WORKING)
@@ -1043,12 +1043,20 @@ document.addEventListener("click", (e) => {
   if (!activeError) return;
 
   if (applyBtn) {
-    const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
-    activeError.replaceWith(document.createTextNode(diff.suggestion));
+    if (applyBtn) {
+  const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
 
+  if (!diff || !diff.suggestion) {
+    console.error("❌ Invalid diff — aborting apply", diff);
+    return;
+  }
+
+  activeError.replaceWith(
+    document.createTextNode(diff.suggestion)
+  );
 
   appliedCorrections += 1;
-} else {
+}else {
     const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
     activeError.replaceWith(document.createTextNode(diff.original));
 
