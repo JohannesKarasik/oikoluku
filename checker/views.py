@@ -1038,3 +1038,68 @@ def settings_view(request):
     )
 
 
+
+
+
+@login_required
+def cancel_subscription(request):
+    profile = getattr(request.user, "profile", None)
+
+    if not profile or not profile.stripe_subscription_id:
+        messages.error(request, "Fant ikke aktivt abonnement.")
+        return redirect("settings")
+
+    try:
+        stripe.checkout.Session.expire  # noop import guard
+
+        stripe.Subscription.delete(profile.stripe_subscription_id)
+
+        profile.is_paying = False
+        profile.stripe_subscription_id = None
+        profile.save()
+
+        messages.success(request, "Abonnementet er avsluttet.")
+    except Exception as e:
+        messages.error(request, "Kunne ikke avslutte abonnementet.")
+
+    return redirect("settings")
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
+@login_required
+def settings_view(request):
+    user = request.user
+    profile = getattr(user, "profile", None)
+
+    if request.method == "POST":
+        # Change password
+        current = request.POST.get("current_password")
+        new = request.POST.get("new_password")
+
+        if not user.check_password(current):
+            messages.error(request, "Nåværende passord er feil.")
+            return redirect("settings")
+
+        if not new or len(new) < 8:
+            messages.error(request, "Passordet må være minst 8 tegn.")
+            return redirect("settings")
+
+        user.set_password(new)
+        user.save()
+
+        messages.success(request, "Passordet er oppdatert.")
+        return redirect("settings")
+
+    return render(
+        request,
+        "checker/settings.html",
+        {
+            "email": user.email,
+            "is_paying": bool(profile and profile.is_paying),
+        }
+    )
+
+

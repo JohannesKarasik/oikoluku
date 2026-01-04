@@ -1,0 +1,153 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Innstillinger – Rettskriving Sjekk</title>
+  <meta name="description" content="Administrer konto, abonnement og passord for Rettskriving Sjekk." />
+
+  <link rel="icon" href="{% static 'checker/favicon_io/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'checker/main.css' %}">
+</head>
+
+<body>
+
+  {% include "checker/header.html" %}
+
+  <div class="wrap">
+    <main class="card">
+      <div class="card__body">
+
+        <div class="settings">
+
+          <h1>Innstillinger</h1>
+          <p class="settings-subtitle">
+            Administrer kontoen og abonnementet ditt
+          </p>
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="auth-error {{ message.tags }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <!-- Konto -->
+          <section class="settings-section">
+            <h3>Konto</h3>
+            <div class="settings-row">
+              <span>E-post</span>
+              <strong>{{ email }}</strong>
+            </div>
+          </section>
+
+          <!-- Abonnement -->
+          <section class="settings-section">
+            <h3>Abonnement</h3>
+
+            {% if is_paying %}
+              <p class="status status--ok">Aktivt abonnement</p>
+
+              <form method="post" action="{% url 'cancel_subscription' %}">
+                {% csrf_token %}
+                <button
+                  type="submit"
+                  class="btn btn--danger btn--outline"
+                  onclick="return confirm('Er du sikker på at du vil si opp abonnementet?')"
+                >
+                  Si opp abonnement
+                </button>
+              </form>
+            {% else %}
+              <p class="status status--warn">Ingen aktivt abonnement</p>
+            {% endif %}
+          </section>
+
+          <!-- Logg ut -->
+          <section class="settings-section">
+
+
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn--outline">
+                Logg ut
+              </button>
+            </form>
+          </section>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  {% include "checker/footer.html" %}
+
+  <style>
+    .settings {
+      max-width: 520px;
+      margin: 24px auto 40px;
+    }
+
+    .settings h1 {
+      margin-bottom: 4px;
+    }
+
+    .settings-subtitle {
+      color: rgba(0,0,0,0.6);
+      margin-bottom: 28px;
+      font-size: 14px;
+    }
+
+    .settings-section {
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding-top: 24px;
+      margin-top: 24px;
+    }
+
+    .settings-section h3 {
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .status {
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .status--ok {
+      color: #0a7c2f;
+    }
+
+    .status--warn {
+      color: #b45309;
+    }
+
+    .btn--danger {
+      color: #b42318;
+      border-color: #b42318;
+    }
+
+    .btn--danger:hover {
+      background: rgba(180,35,24,0.06);
+    }
+
+    input {
+      display: block;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+  </style>
+
+</body>
+</html>
