@@ -1,13 +1,13 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="no">
+<html lang="fi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Innstillinger – Rettskriving Sjekk</title>
-  <meta name="description" content="Administrer konto, abonnement og passord for Rettskriving Sjekk." />
+  <title>Asetukset – Rettskriving Sjekk</title>
+  <meta name="description" content="Hallitse tiliäsi, tilaustasi ja salasanaasi Rettskriving Sjekk -palvelussa." />
 
   <link rel="icon" href="{% static 'checker/favicon_io/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'checker/main.css' %}">
@@ -23,9 +23,9 @@
 
         <div class="settings">
 
-          <h1>Innstillinger</h1>
+          <h1>Asetukset</h1>
           <p class="settings-subtitle">
-            Administrer kontoen og abonnementet ditt
+            Hallitse tiliäsi ja tilaustasi
           </p>
 
           {% if messages %}
@@ -38,43 +38,41 @@
 
           <!-- Konto -->
           <section class="settings-section">
-            <h3>Konto</h3>
+            <h3>Tili</h3>
             <div class="settings-row">
-              <span>E-post</span>
+              <span>Sähköposti</span>
               <strong>{{ email }}</strong>
             </div>
           </section>
 
           <!-- Abonnement -->
           <section class="settings-section">
-            <h3>Abonnement</h3>
+            <h3>Tilaus</h3>
 
             {% if is_paying %}
-              <p class="status status--ok">Aktivt abonnement</p>
+              <p class="status status--ok">Aktiivinen tilaus</p>
 
               <form method="post" action="{% url 'cancel_subscription' %}">
                 {% csrf_token %}
                 <button
                   type="submit"
                   class="btn btn--danger btn--outline"
-                  onclick="return confirm('Er du sikker på at du vil si opp abonnementet?')"
+                  onclick="return confirm('Haluatko varmasti peruuttaa tilauksesi?')"
                 >
-                  Si opp abonnement
+                  Peruuta tilaus
                 </button>
               </form>
             {% else %}
-              <p class="status status--warn">Ingen aktivt abonnement</p>
+              <p class="status status--warn">Ei aktiivista tilausta</p>
             {% endif %}
           </section>
 
           <!-- Logg ut -->
           <section class="settings-section">
-
-
             <form method="post" action="{% url 'logout' %}">
               {% csrf_token %}
               <button type="submit" class="btn btn--outline">
-                Logg ut
+                Kirjaudu ulos
               </button>
             </form>
           </section>
