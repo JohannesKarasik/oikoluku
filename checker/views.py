@@ -274,8 +274,13 @@ def index(request):
             return JsonResponse({"error": "auth_required"}, status=401)
 
         profile = getattr(request.user, "profile", None)
-        if not profile or not profile.is_paying:
+
+        if profile is None:
             return JsonResponse({"error": "payment_required"}, status=402)
+
+        if profile.is_paying is not True:
+            return JsonResponse({"error": "payment_required"}, status=402)
+
 
         text = normalize_pasted_text(request.POST.get("text", ""))
 
@@ -316,11 +321,18 @@ def index(request):
     # =========================
     # PAGE RENDER (IMPORTANT)
     # =========================
-    is_paying = (
-        request.user.is_authenticated
-        and hasattr(request.user, "profile")
-        and request.user.profile.is_paying
-    )
+    is_paying = False
+    if request.user.is_authenticated:
+        profile = getattr(request.user, "profile", None)
+        is_paying = bool(profile and profile.is_paying)
+
+
+    # 🔓 TEMPORARY UNLOCK AFTER STRIPE RETURN (SAFE)
+    if request.user.is_authenticated and request.GET.get("paid") == "1":
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.is_paying = True
+        profile.save(update_fields=["is_paying"])
+        is_paying = True
 
     return render(
         request,
@@ -394,16 +406,16 @@ def insert_commas_with_openai(text: str) -> str:
         system_prompt = (
             "Olet suomen kielen pilkkukorjaaja.\n\n"
             "SÄÄNNÖT (PAKOLLINEN):\n"
-            "- Saat tekstin ja sinun tulee KORJATA VAIN PILKKUJA.\n"
-            "- ÄLÄ muuta tai korjaa OIKEINKIRJOITUSTA, isoja/pieniä kirjaimia tai sanavalintoja.\n"
-            "- ÄLÄ lisää tai poista sanoja.\n"
-            "- ÄLÄ muuta sanojen järjestystä.\n"
-            "- Saat VAIN lisätä tai poistaa pilkkuja.\n"
-            "- Saat VAIN muuttaa välilyöntejä juuri ennen tai jälkeen pilkun.\n"
-            "- ET SAA KOSKAAN poistaa tai lisätä välilyöntejä kahden sanan välistä "
-            "(älä yhdistä tai jaa sanoja).\n\n"
+            "- Korjaa VAIN pilkut\n"
+            "- ÄLÄ muuta oikeinkirjoitusta, kirjaimia tai sanoja\n"
+            "- ÄLÄ lisää tai poista sanoja\n"
+            "- ÄLÄ muuta sanojen järjestystä\n"
+            "- Saat lisätä tai poistaa VAIN pilkkuja\n"
+            "- Saat muuttaa välilyöntejä vain pilkun vieressä\n"
+            "- ET SAA yhdistää tai erottaa sanoja\n\n"
             "Palauta VAIN teksti."
         )
+
 
         client = get_openai_client()
         resp = client.chat.completions.create(
@@ -432,40 +444,46 @@ def insert_commas_with_openai(text: str) -> str:
 
 # =================================================
 # OPENAI – NORWEGIAN (MIRRORS DANISH STYLE)
-# =================================================
 def correct_with_openai(text: str) -> str:
     """
     Hard constraints:
-    - never add/remove/reorder words
-    - allow spelling + punctuation + spacing
-    - we also undo pure word-merges like "alt for" -> "altfor"
+    - älä lisää / poista / järjestä uudelleen sanoja
+    - salli oikeinkirjoitus, välimerkit ja välilyönnit
     """
     try:
         base_prompt = (
-            "Du er en profesjonell norsk korrekturleser (bokmål).\n\n"
-            "MÅL: Rett ALLE stavefeil og ALL tegnsetting, spesielt komma, uten å endre innhold.\n\n"
-            "ABSOLUTTE REGLER (MÅ FØLGES):\n"
-            "- IKKE legg til nye ord\n"
-            "- IKKE fjern ord\n"
-            "- IKKE endre rekkefølgen på ord\n"
-            "- IKKE omskriv setninger og IKKE bruk synonymer\n"
-            "- Du kan kun endre bokstaver inni eksisterende ord for å rette stavefeil\n"
-            "- Du kan rette tegnsetting (komma/punktum/kolon/anførselstegn) og mellomrom\n"
-            "- Bevar linjeskift og avsnitt nøyaktig som i input\n\n"
-            "KOMMA-SJEKK (MÅ GJØRES FØR DU SVARER): Gå setning for setning og rett komma når regelen krever det:\n"
-            "1) Komma etter innledende leddsetning:\n"
-            "   Hvis/Når/Da/Dersom/Selv om/Fordi/Siden/Mens/Etter at/Før/For at/Om ... ,\n"
-            "2) Komma rundt innskutte leddsetninger/parentetiske innskudd.\n"
-            "3) Komma før 'og/men/for/eller' når det binder sammen to helsetninger "
-            "(begge har eget subjekt + verbal).\n"
-            "4) Komma i oppramsing når det trengs for tydelighet.\n"
-            "5) IKKE sett komma mellom subjekt og verbal i en enkel helsetning.\n\n"
-            "VIKTIG: Teksten inneholder feil. Du skal finne og rette dem innenfor reglene.\n"
-            "Ikke returner identisk tekst hvis det finnes kommafeil eller tydelige skrivefeil.\n\n"
-            "Returner KUN den korrigerte teksten. Ingen forklaring."
+            "Olet ammattimainen suomen kielen oikolukija.\n\n"
+            "TAVOITE: Korjaa KAIKKI kirjoitusvirheet ja KAIKKI välimerkit, "
+            "erityisesti pilkut, muuttamatta sisällön merkitystä.\n\n"
+
+            "EHDOTTOMAT SÄÄNNÖT (PAKOLLINEN):\n"
+            "- ÄLÄ lisää uusia sanoja\n"
+            "- ÄLÄ poista sanoja\n"
+            "- ÄLÄ muuta sanojen järjestystä\n"
+            "- ÄLÄ muotoile lauseita uudelleen\n"
+            "- ÄLÄ käytä synonyymejä\n"
+            "- Saat muuttaa vain kirjaimia olemassa olevien sanojen SISÄLLÄ "
+            "oikeinkirjoituksen korjaamiseksi\n"
+            "- Saat korjata vain välimerkkejä (pilkku, piste, kaksoispiste, lainausmerkit) "
+            "ja välilyöntejä\n"
+            "- Säilytä rivinvaihdot ja kappaleet TÄSMÄLLEEN kuten syötteessä\n\n"
+
+            "PILKKUTARKISTUS (TEE ENNEN VASTAUSTA):\n"
+            "1) Pilkku alistuskonjunktion jälkeen:\n"
+            "   jos / kun / vaikka / koska / jotta / ennen kuin / sen jälkeen kun / "
+            "niin että / vaikka ... ,\n"
+            "2) Pilkut sivulauseiden ympärille\n"
+            "3) Pilkku ennen 'ja / mutta / tai' vain jos ne yhdistävät "
+            "kaksi itsenäistä lausetta\n"
+            "4) Pilkut luetteloissa selkeyden vuoksi\n"
+            "5) ÄLÄ laita pilkkua subjektin ja predikaatin väliin\n\n"
+
+            "TÄRKEÄÄ:\n"
+            "Tekstissä on virheitä. Sinun täytyy löytää ja korjata ne.\n"
+            "ÄLÄ palauta identtistä tekstiä, jos pilkku- tai kirjoitusvirheitä on.\n\n"
+
+            "Palauta VAIN korjattu teksti. Ei selityksiä."
         )
-
-
 
         def call_llm(system_prompt: str, user_text: str) -> str:
             client = get_openai_client()
@@ -479,7 +497,6 @@ def correct_with_openai(text: str) -> str:
             )
             return (resp.choices[0].message.content or "").rstrip(" \t")
 
-
         # 1) First attempt
         corrected = call_llm(base_prompt, text)
         if not corrected:
@@ -487,26 +504,24 @@ def correct_with_openai(text: str) -> str:
 
         corrected = undo_space_merges(text, corrected)
 
-        # 2) If unchanged, retry once with a nudge (THIS is what you lost before)
+        # 2) Retry if unchanged
         if corrected.strip() == text.strip():
             nudge_prompt = base_prompt + (
-                "\n\nTEKSTEN INNEHOLDER FEIL.\n"
-                "Du må rette alle tydelige stavefeil OG alle kommafeil innenfor reglene.\n"
-                "Kjør KOMMA-SJEKKEN (punkt 1–5) setning for setning og ikke returner identisk tekst hvis noen komma mangler/er feil."
+                "\n\nTEKSTISSÄ ON VIRHEITÄ.\n"
+                "Korjaa KAIKKI selvät kirjoitus- ja pilkkuvirheet sääntöjen mukaisesti.\n"
+                "Käy lauseet läpi yksitellen."
             )
-
             corrected2 = call_llm(nudge_prompt, text)
             if corrected2:
-                corrected2 = undo_space_merges(text, corrected2)
-                corrected = corrected2
+                corrected = undo_space_merges(text, corrected2)
 
-        # 3) Validate: if model added/removed/substituted whole words → retry strict once
+        # 3) Strict validation
         if violates_no_word_add_remove(text, corrected):
             strict_prompt = base_prompt + (
-                "\n\nEKSTRA STRIKT:\n"
-                "- Antall ord i svaret MÅ være identisk med input\n"
-                "- Hvert ord i output skal være samme ord som input (kun små staveendringer er lov)\n"
-                "- Ikke forbedre setninger eller flyt; kun rett skrivefeil og tegnsetting.\n"
+                "\n\nERITTÄIN TIIUKKA TILA:\n"
+                "- Sanojen lukumäärän täytyy olla TÄSMÄLLEEN sama\n"
+                "- Jokaisen sanan on oltava sama sana (vain pienet kirjoituskorjaukset sallitaan)\n"
+                "- Älä paranna tyyliä tai sujuvuutta\n"
             )
             corrected2 = call_llm(strict_prompt, text)
             if corrected2:
@@ -514,23 +529,18 @@ def correct_with_openai(text: str) -> str:
                 if not violates_no_word_add_remove(text, corrected2):
                     return corrected2
 
-            # 4) Salvage instead of returning original:
-            # apply only safe spelling fixes to existing words (keeps word count/order)
             salvaged = project_safe_word_corrections(text, corrected2 or corrected)
             if not salvaged:
                 return text
 
-            # ✅ also run comma-only on salvaged text (safe)
             salvaged = insert_commas_with_openai(salvaged)
             return salvaged
 
-
-        # ✅ second pass: comma-only (won't change words)
         corrected = insert_commas_with_openai(corrected)
         return corrected
 
     except Exception as e:
-        print("❌ OpenAI error:", e)
+        print("❌ OpenAI Finnish error:", e)
         return text
 
 
@@ -896,49 +906,35 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @require_POST
 @login_required
 def create_checkout_session(request):
-    """
-    Creates a Stripe Checkout Session for a subscription with trial.
-    Redirects user back to `/` on success.
-    User access is unlocked via webhook (source of truth).
-    """
+    profile, _ = Profile.objects.get_or_create(user=request.user)
 
-    # Safety: make sure user has an email (Stripe prefers it)
-    customer_email = request.user.email or None
-
-    try:
-        session = stripe.checkout.Session.create(
-            mode="subscription",
-
-            # 🔑 THIS IS CRITICAL — used by webhook
-            client_reference_id=request.user.id,
-
-            customer_email=customer_email,
-
-            line_items=[
-                {
-                    "price": settings.STRIPE_PRICE_ID,
-                    "quantity": 1,
-                }
-            ],
-
-            subscription_data={
-                "trial_period_days": 30,
-            },
-
-            success_url=request.build_absolute_uri("/"),
-            cancel_url=request.build_absolute_uri("/"),
-
-            # ✅ Promo/coupon box removed
-            allow_promotion_codes=False,
+    # ✅ ALWAYS create or reuse Stripe customer
+    if profile.stripe_customer_id:
+        customer_id = profile.stripe_customer_id
+    else:
+        customer = stripe.Customer.create(
+            email=request.user.email,
+            metadata={"user_id": request.user.id},
         )
+        customer_id = customer.id
+        profile.stripe_customer_id = customer_id
+        profile.save(update_fields=["stripe_customer_id"])
 
-        return JsonResponse({"url": session.url})
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        customer=customer_id,
+        line_items=[
+            {
+                "price": settings.STRIPE_PRICE_ID,
+                "quantity": 1,
+            }
+        ],
+        subscription_data={"trial_period_days": 30},
+        success_url=request.build_absolute_uri("/?paid=1"),
+        cancel_url=request.build_absolute_uri("/"),
+    )
 
-    except Exception as e:
-        return JsonResponse(
-            {"error": str(e)},
-            status=400
-        )
+    return JsonResponse({"url": session.url})
 
 
 from django.contrib.auth.models import User
@@ -958,23 +954,21 @@ def stripe_webhook(request):
     except Exception:
         return HttpResponse(status=400)
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+    if event["type"] in (
+        "checkout.session.completed",
+        "invoice.payment_succeeded",
+    ):
+        obj = event["data"]["object"]
+        customer_id = obj.get("customer")
 
-        user_id = session.get("client_reference_id")
-        if not user_id:
+        if not customer_id:
             return HttpResponse(status=200)
 
         try:
-            user = User.objects.get(id=user_id)
-            profile, _ = Profile.objects.get_or_create(user=user)
+            profile = Profile.objects.get(stripe_customer_id=customer_id)
             profile.is_paying = True
-            profile.stripe_customer_id = session.get("customer")
-            profile.stripe_subscription_id = session.get("subscription")
-            profile.save()
-
-            profile.save()
-        except User.DoesNotExist:
+            profile.save(update_fields=["is_paying"])
+        except Profile.DoesNotExist:
             pass
 
     return HttpResponse(status=200)
