@@ -1146,18 +1146,18 @@ document.addEventListener("click", (e) => {
 
           const diffs = data.differences || [];
 
-      editor.innerHTML = buildHighlightedHTML(
-        data.original_text,
-        diffs
-      );
+    // ✅ Render highlights on ORIGINAL text
+    editor.innerHTML = buildHighlightedHTML(
+      data.original_text,
+      diffs
+    );
 
-      lastPlainText = data.corrected_text;
+    // ✅ IMPORTANT: lastPlainText MUST stay original
+    lastPlainText = data.original_text;
 
+    sessionStorage.setItem("tc_text", lastPlainText);
+    updateCounts(lastPlainText);
 
-      lastPlainText = data.corrected_text;
-
-      sessionStorage.setItem("tc_text", lastPlainText);
-      updateCounts(lastPlainText);
   
     } catch (err) {
       console.error("Submit error:", err);
