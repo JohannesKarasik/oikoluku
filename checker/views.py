@@ -274,13 +274,8 @@ def index(request):
             return JsonResponse({"error": "auth_required"}, status=401)
 
         profile = getattr(request.user, "profile", None)
-
-        if profile is None:
+        if not profile or not profile.is_paying:
             return JsonResponse({"error": "payment_required"}, status=402)
-
-        if profile.is_paying is not True:
-            return JsonResponse({"error": "payment_required"}, status=402)
-
 
         text = normalize_pasted_text(request.POST.get("text", ""))
 
@@ -321,18 +316,11 @@ def index(request):
     # =========================
     # PAGE RENDER (IMPORTANT)
     # =========================
-    is_paying = False
-    if request.user.is_authenticated:
-        profile = getattr(request.user, "profile", None)
-        is_paying = bool(profile and profile.is_paying)
-
-
-    # 🔓 TEMPORARY UNLOCK AFTER STRIPE RETURN (SAFE)
-    if request.user.is_authenticated and request.GET.get("paid") == "1":
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.is_paying = True
-        profile.save(update_fields=["is_paying"])
-        is_paying = True
+    is_paying = (
+        request.user.is_authenticated
+        and hasattr(request.user, "profile")
+        and request.user.profile.is_paying
+    )
 
     return render(
         request,
@@ -908,35 +896,49 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @require_POST
 @login_required
 def create_checkout_session(request):
-    profile, _ = Profile.objects.get_or_create(user=request.user)
+    """
+    Creates a Stripe Checkout Session for a subscription with trial.
+    Redirects user back to `/` on success.
+    User access is unlocked via webhook (source of truth).
+    """
 
-    # ✅ ALWAYS create or reuse Stripe customer
-    if profile.stripe_customer_id:
-        customer_id = profile.stripe_customer_id
-    else:
-        customer = stripe.Customer.create(
-            email=request.user.email,
-            metadata={"user_id": request.user.id},
+    # Safety: make sure user has an email (Stripe prefers it)
+    customer_email = request.user.email or None
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+
+            # 🔑 THIS IS CRITICAL — used by webhook
+            client_reference_id=request.user.id,
+
+            customer_email=customer_email,
+
+            line_items=[
+                {
+                    "price": settings.STRIPE_PRICE_ID,
+                    "quantity": 1,
+                }
+            ],
+
+            subscription_data={
+                "trial_period_days": 30,
+            },
+
+            success_url=request.build_absolute_uri("/"),
+            cancel_url=request.build_absolute_uri("/"),
+
+            # ✅ Promo/coupon box removed
+            allow_promotion_codes=False,
         )
-        customer_id = customer.id
-        profile.stripe_customer_id = customer_id
-        profile.save(update_fields=["stripe_customer_id"])
 
-    session = stripe.checkout.Session.create(
-        mode="subscription",
-        customer=customer_id,
-        line_items=[
-            {
-                "price": settings.STRIPE_PRICE_ID,
-                "quantity": 1,
-            }
-        ],
-        subscription_data={"trial_period_days": 30},
-        success_url=request.build_absolute_uri("/?paid=1"),
-        cancel_url=request.build_absolute_uri("/"),
-    )
+        return JsonResponse({"url": session.url})
 
-    return JsonResponse({"url": session.url})
+    except Exception as e:
+        return JsonResponse(
+            {"error": str(e)},
+            status=400
+        )
 
 
 from django.contrib.auth.models import User
@@ -956,21 +958,23 @@ def stripe_webhook(request):
     except Exception:
         return HttpResponse(status=400)
 
-    if event["type"] in (
-        "checkout.session.completed",
-        "invoice.payment_succeeded",
-    ):
-        obj = event["data"]["object"]
-        customer_id = obj.get("customer")
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
 
-        if not customer_id:
+        user_id = session.get("client_reference_id")
+        if not user_id:
             return HttpResponse(status=200)
 
         try:
-            profile = Profile.objects.get(stripe_customer_id=customer_id)
+            user = User.objects.get(id=user_id)
+            profile, _ = Profile.objects.get_or_create(user=user)
             profile.is_paying = True
-            profile.save(update_fields=["is_paying"])
-        except Profile.DoesNotExist:
+            profile.stripe_customer_id = session.get("customer")
+            profile.stripe_subscription_id = session.get("subscription")
+            profile.save()
+
+            profile.save()
+        except User.DoesNotExist:
             pass
 
     return HttpResponse(status=200)
