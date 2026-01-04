@@ -849,6 +849,8 @@ window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }}
   if (!editor || !form) return;
 
   let lastPlainText = "";
+  let CURRENT_DIFFS = [];
+
   let activeError = null;
 
   /* -------------------------------
@@ -926,9 +928,9 @@ window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }}
   for (const d of diffs) {
     html += htmlWithNewlines(text.slice(last, d.start));
     html += `<span class="error"
-      data-original="${escapeHTML(d.original)}"
-      data-suggestion="${escapeHTML(d.suggestion)}"
+      data-diff-index="${diffs.indexOf(d)}"
     >${escapeHTML(text.slice(d.start, d.end))}</span>`;
+
     last = d.end;
   }
 
@@ -976,13 +978,16 @@ editor.addEventListener("click", (e) => {
   // ✅ Allowed
   activeError = error;
 
-  tooltip.innerHTML = `
-    <div class="suggestion">${error.dataset.suggestion}</div>
-    <div class="actions">
-      <button type="button" class="apply">Käytä</button>
-      <button type="button" class="dismiss">Hylkää</button>
-    </div>
-  `;
+  const diff = CURRENT_DIFFS[Number(error.dataset.diffIndex)];
+
+tooltip.innerHTML = `
+  <div class="suggestion">${escapeHTML(diff.suggestion)}</div>
+  <div class="actions">
+    <button type="button" class="apply">Käytä</button>
+    <button type="button" class="dismiss">Hylkää</button>
+  </div>
+`;
+
 
   positionTooltip(error);
 });
@@ -1038,13 +1043,15 @@ document.addEventListener("click", (e) => {
   if (!activeError) return;
 
   if (applyBtn) {
-  const suggestion = activeError.dataset.suggestion || "";
-  activeError.replaceWith(document.createTextNode(suggestion));
+    const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
+    activeError.replaceWith(document.createTextNode(diff.suggestion));
+
 
   appliedCorrections += 1;
 } else {
-    const original = activeError.dataset.original || "";
-    activeError.replaceWith(document.createTextNode(original));
+    const diff = CURRENT_DIFFS[Number(activeError.dataset.diffIndex)];
+    activeError.replaceWith(document.createTextNode(diff.original));
+
   }
 
   lastPlainText = getPlainText();
@@ -1144,13 +1151,13 @@ document.addEventListener("click", (e) => {
     }
 
 
-          const diffs = data.differences || [];
+    CURRENT_DIFFS = data.differences || [];
 
-    // ✅ Render highlights on ORIGINAL text
     editor.innerHTML = buildHighlightedHTML(
       data.original_text,
-      diffs
+      CURRENT_DIFFS
     );
+
 
     // ✅ IMPORTANT: lastPlainText MUST stay original
     lastPlainText = data.original_text;
