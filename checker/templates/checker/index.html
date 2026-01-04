@@ -1076,19 +1076,21 @@ document.addEventListener("click", (e) => {
   
       const data = await res.json();
 
-// 🚫 HARD STOP on backend errors
-if (!res.ok || data.error) {
+      if (!res.ok) {
   submit.disabled = false;
   submit.classList.remove("is-loading");
 
-  if (data.error === "auth_required") {
+  if (data?.error === "auth_required") {
     window.openRegisterModal?.() || window.openAuthModal?.();
-  } else if (data.error === "payment_required") {
+  }
+
+  if (data?.error === "payment_required") {
     window.openPaymentModal?.();
   }
 
-  return; // ⬅️ CRITICAL
+  return; // ⬅️ CRITICAL: prevents highlight rendering after modal
 }
+
 
       const diffs = getWordDiffs(
         data.original_text,

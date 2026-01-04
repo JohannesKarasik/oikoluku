@@ -274,8 +274,13 @@ def index(request):
             return JsonResponse({"error": "auth_required"}, status=401)
 
         profile = getattr(request.user, "profile", None)
-        if not profile or not profile.is_paying:
+
+        if profile is None:
             return JsonResponse({"error": "payment_required"}, status=402)
+
+        if profile.is_paying is not True:
+            return JsonResponse({"error": "payment_required"}, status=402)
+
 
         text = normalize_pasted_text(request.POST.get("text", ""))
 
@@ -316,11 +321,11 @@ def index(request):
     # =========================
     # PAGE RENDER (IMPORTANT)
     # =========================
-    is_paying = (
-        request.user.is_authenticated
-        and hasattr(request.user, "profile")
-        and request.user.profile.is_paying
-    )
+    is_paying = False
+    if request.user.is_authenticated:
+        profile = getattr(request.user, "profile", None)
+        is_paying = bool(profile and profile.is_paying)
+
 
     return render(
         request,
