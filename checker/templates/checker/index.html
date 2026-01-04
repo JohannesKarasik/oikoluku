@@ -747,6 +747,41 @@
 .pay-modal__cta:hover { background: var(--pm-primary-hover); }
 .pay-modal__cta:focus-visible { outline: none; box-shadow: var(--pm-ring); }
 
+
+#tooltip-portal {
+  position: fixed;
+  z-index: 9999;
+  background: #111827;
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.25);
+  font-size: 14px;
+  line-height: 1.4;
+  display: none;
+  pointer-events: auto;
+}
+
+#tooltip-portal.visible {
+  display: block;
+}
+
+#tooltip-portal .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#tooltip-portal button {
+  background: #fff;
+  color: #111;
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
  </style>
 
 <script>
@@ -969,8 +1004,9 @@ window.__tcTooltip = tooltip;
      APPLY / DISMISS (WORKING)
   --------------------------------*/
 document.addEventListener("click", (e) => {
-  const applyBtn = e.target.closest(".tooltip-portal .apply");
-  const dismissBtn = e.target.closest(".tooltip-portal .dismiss");
+  const applyBtn = e.target.closest("#tooltip-portal .apply");
+  const dismissBtn = e.target.closest("#tooltip-portal .dismiss");
+
   if (!applyBtn && !dismissBtn) return;
 
   e.preventDefault();
@@ -990,7 +1026,8 @@ document.addEventListener("click", (e) => {
   sessionStorage.setItem("tc_text", lastPlainText);
   updateCounts(lastPlainText);
 
-  document.querySelector(".tooltip-portal")?.classList.remove("visible");
+  tooltip.classList.remove("visible");
+  tooltip.style.display = "none";
   activeError = null;
 }, true);
 
