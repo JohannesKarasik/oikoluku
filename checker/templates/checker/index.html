@@ -876,24 +876,23 @@
      RENDER HIGHLIGHTS (UNCHANGED)
   --------------------------------*/
   function buildHighlightedHTML(text, diffs) {
-    if (!diffs.length) return htmlWithNewlines(text);
+  if (!diffs.length) return htmlWithNewlines(text);
 
-    let html = "";
-    let last = 0;
+  let html = "";
+  let last = 0;
 
-    for (const d of diffs) {
-      html += htmlWithNewlines(text.slice(last, d.start));
-      html += `<span class="error"
+  for (const d of diffs) {
+    html += htmlWithNewlines(text.slice(last, d.start));
+    html += `<span class="error"
       data-original="${escapeHTML(d.original)}"
       data-suggestion="${escapeHTML(d.suggestion)}"
-    >${escapeHTML(d.original)}</span>`;
-    
-          last = d.end;
-    }
-
-    html += htmlWithNewlines(text.slice(last));
-    return html;
+    >${escapeHTML(text.slice(d.start, d.end))}</span>`;
+    last = d.end;
   }
+
+  html += htmlWithNewlines(text.slice(last));
+  return html;
+}
 
   /* -------------------------------
      TOOLTIP PORTAL (NO LAYOUT SHIFT)
@@ -901,7 +900,7 @@
 /* -------------------------------
    TOOLTIP PORTAL (REUSE EXISTING)
 --------------------------------*/
-const tooltip = document.querySelector(".tooltip-portal");
+const tooltip = document.getElementById("tooltip-portal");
 
 if (!tooltip) {
   console.error("❌ tooltip-portal not found — it must be created in index.html");
@@ -1105,16 +1104,15 @@ document.addEventListener("click", (e) => {
     }
 
 
-        const diffs = getWordDiffs(
-      lastPlainText,
-      data.corrected_text
-    );
+          const diffs = data.differences || [];
 
-  
       editor.innerHTML = buildHighlightedHTML(
-        data.corrected_text,
+        data.original_text,
         diffs
       );
+
+      lastPlainText = data.corrected_text;
+
 
       lastPlainText = data.corrected_text;
 
