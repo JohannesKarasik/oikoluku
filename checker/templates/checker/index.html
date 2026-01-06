@@ -747,40 +747,163 @@
 .pay-modal__cta:hover { background: var(--pm-primary-hover); }
 .pay-modal__cta:focus-visible { outline: none; box-shadow: var(--pm-ring); }
 
-
-#tooltip-portal {
+/* =========================
+   ✅ Pro tooltip (matches theme)
+========================= */
+#tooltip-portal{
   position: fixed;
   z-index: 9999;
-  background: #111827;
-  color: #fff;
-  padding: 10px 12px;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,.25);
-  font-size: 14px;
-  line-height: 1.4;
+  width: min(360px, calc(100vw - 24px));
   display: none;
   pointer-events: auto;
+
+  background: #fff;
+  color: var(--text, #0f172a);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
 }
 
-#tooltip-portal.visible {
-  display: block;
+#tooltip-portal.visible{ display: block; }
+
+/* little arrow */
+#tooltip-portal::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-right: 1px solid var(--border, #e5e7eb);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  transform: translateX(-50%) rotate(45deg);
 }
 
-#tooltip-portal .actions {
+/* layout */
+.tc-tip{
+  padding: 12px 12px 10px;
+}
+
+.tc-tip__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tc-tip__title{
+  font-weight: 800;
+  letter-spacing: .2px;
+  font-size: 13px;
+  color: color-mix(in oklab, var(--text, #0f172a), #000 10%);
+}
+
+.tc-tip__close{
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  color: #334155;
+  display: grid;
+  place-items: center;
+}
+.tc-tip__close:hover{ background: #f8fafc; }
+
+.tc-tip__row{
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tc-tip__meta{
+  font-size: 12px;
+  color: color-mix(in oklab, var(--text, #0f172a), #fff 45%);
+  margin-bottom: 4px;
+}
+
+.tc-tip__text{
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 10px 10px;
+  font-size: 14px;
+  line-height: 1.35;
+  background: #fff;
+  word-break: break-word;
+}
+
+.tc-tip__text--bad{
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.20);
+}
+
+.tc-tip__text--good{
+  background: color-mix(in oklab, var(--accent, #057e6f), #fff 92%);
+  border-color: color-mix(in oklab, var(--accent, #057e6f), #fff 70%);
+}
+
+.tc-tip__actions{
   display: flex;
   gap: 8px;
   margin-top: 8px;
 }
 
-#tooltip-portal button {
+.tc-btn{
+  flex: 1;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e5e7eb);
   background: #fff;
-  color: #111;
-  border: 0;
-  border-radius: 6px;
-  padding: 4px 8px;
+  font-weight: 800;
   font-size: 13px;
   cursor: pointer;
 }
+.tc-btn:hover{ background: #f8fafc; }
+
+.tc-btn--primary{
+  border-color: color-mix(in oklab, var(--accent, #057e6f), #fff 65%);
+  background: var(--accent, #057e6f);
+  color: #fff;
+}
+.tc-btn--primary:hover{
+  background: color-mix(in oklab, var(--accent, #057e6f), #000 12%);
+}
+
+/* Badge */
+.tc-badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid var(--border, #e5e7eb);
+  background: #f8fafc;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.tc-badge--serious{
+  border-color: rgba(239, 68, 68, 0.30);
+  background: rgba(239, 68, 68, 0.10);
+  color: #991b1b;
+}
+.tc-badge--error{
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+.tc-badge--improve{
+  border-color: rgba(5, 150, 105, 0.30);
+  background: rgba(5, 150, 105, 0.12);
+  color: #065f46;
+}
+
 
  </style>
 
