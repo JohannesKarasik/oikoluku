@@ -1060,13 +1060,24 @@
   /* -------------------------------
      INIT
   --------------------------------*/
-  const saved = sessionStorage.getItem("tc_text");
-  if (saved) {
-    lastPlainText = saved;
-    editor.innerHTML = htmlWithNewlines(saved);
+  const savedText = sessionStorage.getItem("tc_text");
+  const savedCorrectionState = loadCorrectionState();
+
+  if (
+    savedCorrectionState &&
+    savedCorrectionState.original_text &&
+    Array.isArray(savedCorrectionState.differences)
+  ) {
+    lastPlainText = savedCorrectionState.original_text;
+    CURRENT_DIFFS = savedCorrectionState.differences;
+    editor.innerHTML = buildHighlightedHTML(lastPlainText, CURRENT_DIFFS);
+  } else if (savedText) {
+    lastPlainText = savedText;
+    editor.innerHTML = htmlWithNewlines(savedText);
   }
 
   updateCounts(lastPlainText);
+  enforceLengthLimit(lastPlainText);
   editor.focus();
 
   /* -------------------------------
@@ -1075,6 +1086,8 @@
   editor.addEventListener("input", () => {
     lastPlainText = getPlainText();
     sessionStorage.setItem("tc_text", lastPlainText);
+    clearCorrectionState();
+    CURRENT_DIFFS = [];
     updateCounts(lastPlainText);
     enforceLengthLimit(lastPlainText);
   });
@@ -1083,8 +1096,11 @@
     e.preventDefault();
     editor.innerHTML = "";
     lastPlainText = "";
+    CURRENT_DIFFS = [];
     sessionStorage.removeItem("tc_text");
+    clearCorrectionState();
     updateCounts("");
+    enforceLengthLimit("");
     editor.focus();
   });
 
@@ -1135,11 +1151,20 @@
         CURRENT_DIFFS
       );
 
-      // ✅ IMPORTANT: lastPlainText MUST stay original
       lastPlainText = data.original_text;
 
       sessionStorage.setItem("tc_text", lastPlainText);
+
+      saveCorrectionState({
+        original_text: data.original_text,
+        corrected_text: data.corrected_text,
+        differences: CURRENT_DIFFS,
+      });
+
       updateCounts(lastPlainText);
+
+
+
     } catch (err) {
       console.error("Submit error:", err);
     } finally {
@@ -1162,6 +1187,32 @@
   // Switch buttons
   const openRegisterBtn = document.getElementById("open-register");
   const openLoginBtn = document.getElementById("open-login");
+
+
+  const CORRECTION_STATE_KEY = "tc_correction_state";
+
+function saveCorrectionState(payload) {
+  try {
+    sessionStorage.setItem(CORRECTION_STATE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.error("Failed to save correction state:", e);
+  }
+}
+
+function loadCorrectionState() {
+  try {
+    const raw = sessionStorage.getItem(CORRECTION_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.error("Failed to load correction state:", e);
+    return null;
+  }
+}
+
+function clearCorrectionState() {
+  sessionStorage.removeItem(CORRECTION_STATE_KEY);
+}
+
 
   function openAuthModal() {
     authModal.classList.add("active");

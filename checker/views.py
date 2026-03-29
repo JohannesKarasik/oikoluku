@@ -850,10 +850,11 @@ def register(request):
     email = request.POST.get("email")
     password = request.POST.get("password")
     name = request.POST.get("name")
+    next_url = request.POST.get("next") or "/"
 
     if User.objects.filter(username=email).exists():
         messages.error(request, "E-post finnes allerede.")
-        return redirect("/")
+        return redirect(next_url)
 
     user = User.objects.create_user(
         username=email,
@@ -863,12 +864,14 @@ def register(request):
     )
 
     login(request, user)
-    return redirect("/")
+    return redirect(next_url)
 
 
 def login_view(request):
     if request.method != "POST":
         return redirect("/")
+
+    next_url = request.POST.get("next") or "/"
 
     user = authenticate(
         request,
@@ -881,10 +884,10 @@ def login_view(request):
             request,
             "Denne kontoen finnes ikke, eller passordet er feil."
         )
-        return redirect("/")
+        return redirect(next_url)
 
     login(request, user)
-    return redirect("/")
+    return redirect(next_url)
 
 def logout_view(request):
     if request.method == "POST":
