@@ -798,6 +798,31 @@
   let appliedCorrections = 0;
   const FREE_CORRECTIONS = 1;
 
+
+  const CORRECTION_STATE_KEY = "tc_correction_state";
+
+function saveCorrectionState(payload) {
+  try {
+    sessionStorage.setItem(CORRECTION_STATE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.error("Failed to save correction state:", e);
+  }
+}
+
+function loadCorrectionState() {
+  try {
+    const raw = sessionStorage.getItem(CORRECTION_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.error("Failed to load correction state:", e);
+    return null;
+  }
+}
+
+function clearCorrectionState() {
+  sessionStorage.removeItem(CORRECTION_STATE_KEY);
+}
+
   window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};
 
   function openAuthModal() {
@@ -1110,7 +1135,8 @@
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const text = lastPlainText.trim();
+    const text = getPlainText().trim();
+    lastPlainText = getPlainText();
     if (!text) return;
 
     // 🚫 HARD STOP — NEVER allow loading when too long
@@ -1191,27 +1217,6 @@
 
   const CORRECTION_STATE_KEY = "tc_correction_state";
 
-function saveCorrectionState(payload) {
-  try {
-    sessionStorage.setItem(CORRECTION_STATE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.error("Failed to save correction state:", e);
-  }
-}
-
-function loadCorrectionState() {
-  try {
-    const raw = sessionStorage.getItem(CORRECTION_STATE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    console.error("Failed to load correction state:", e);
-    return null;
-  }
-}
-
-function clearCorrectionState() {
-  sessionStorage.removeItem(CORRECTION_STATE_KEY);
-}
 
 
   function openAuthModal() {
