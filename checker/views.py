@@ -955,31 +955,67 @@ def stripe_webhook(request):
             sig_header,
             settings.STRIPE_WEBHOOK_SECRET,
         )
-    except Exception:
+    except Exception as e:
+        print("Webhook error:", e)
         return HttpResponse(status=400)
 
-    if event["type"] in (
-        "checkout.session.completed",
-        "invoice.payment_succeeded",
-    ):
-        obj = event["data"]["object"]
+    event_type = event["type"]
+    obj = event["data"]["object"]
+
+    if event_type == "checkout.session.completed":
         customer_id = obj.get("customer")
+        subscription_id = obj.get("subscription")
 
-        if not customer_id:
-            return HttpResponse(status=200)
+        if customer_id:
+            try:
+                profile = Profile.objects.get(stripe_customer_id=customer_id)
+                profile.is_paying = True
+                if subscription_id:
+                    profile.stripe_subscription_id = subscription_id
+                profile.save(update_fields=["is_paying", "stripe_subscription_id"])
+            except Profile.DoesNotExist:
+                pass
 
-        try:
-            profile = Profile.objects.get(stripe_customer_id=customer_id)
-            profile.is_paying = True
-            profile.save(update_fields=["is_paying"])
-        except Profile.DoesNotExist:
-            pass
+    elif event_type == "invoice.payment_succeeded":
+        customer_id = obj.get("customer")
+        subscription_id = obj.get("subscription")
+
+        if customer_id:
+            try:
+                profile = Profile.objects.get(stripe_customer_id=customer_id)
+                profile.is_paying = True
+                if subscription_id:
+                    profile.stripe_subscription_id = subscription_id
+                profile.save(update_fields=["is_paying", "stripe_subscription_id"])
+            except Profile.DoesNotExist:
+                pass
+
+    elif event_type in ("customer.subscription.deleted", "customer.subscription.updated"):
+        customer_id = obj.get("customer")
+        status = obj.get("status")
+        cancel_at_period_end = obj.get("cancel_at_period_end", False)
+
+        if customer_id:
+            try:
+                profile = Profile.objects.get(stripe_customer_id=customer_id)
+
+                # If fully canceled, mark unpaid
+                if status in ("canceled", "unpaid", "incomplete_expired"):
+                    profile.is_paying = False
+                    profile.stripe_subscription_id = None
+                    profile.save(update_fields=["is_paying", "stripe_subscription_id"])
+                else:
+                    # keep subscription synced
+                    profile.stripe_subscription_id = obj.get("id")
+                    profile.save(update_fields=["stripe_subscription_id"])
+            except Profile.DoesNotExist:
+                pass
 
     return HttpResponse(status=200)
 
 
-
 @login_required
+@require_POST
 def cancel_subscription(request):
     profile = getattr(request.user, "profile", None)
 
@@ -988,16 +1024,15 @@ def cancel_subscription(request):
         return redirect("settings")
 
     try:
-        stripe.checkout.Session.expire  # noop import guard
-
         stripe.Subscription.delete(profile.stripe_subscription_id)
 
         profile.is_paying = False
         profile.stripe_subscription_id = None
-        profile.save()
+        profile.save(update_fields=["is_paying", "stripe_subscription_id"])
 
         messages.success(request, "Abonnementet er avsluttet.")
     except Exception as e:
+        print("Cancel subscription error:", e)
         messages.error(request, "Kunne ikke avslutte abonnementet.")
 
     return redirect("settings")
