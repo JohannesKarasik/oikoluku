@@ -330,10 +330,7 @@ def index(request):
 
     # 🔓 TEMPORARY UNLOCK AFTER STRIPE RETURN (SAFE)
     if request.user.is_authenticated and request.GET.get("paid") == "1":
-        profile, _ = Profile.objects.get_or_create(user=request.user)
-        profile.is_paying = True
-        profile.save(update_fields=["is_paying"])
-        is_paying = True
+        messages.success(request, "Maksu vastaanotettu.")
 
     return render(
         request,
