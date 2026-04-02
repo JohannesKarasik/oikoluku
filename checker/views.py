@@ -1017,7 +1017,7 @@ def cancel_subscription(request):
     profile = getattr(request.user, "profile", None)
 
     if not profile or not profile.stripe_subscription_id:
-        messages.error(request, "Fant ikke aktivt abonnement.")
+        messages.error(request, "Aktiivista tilausta ei löytynyt.")
         return redirect("settings")
 
     try:
@@ -1027,10 +1027,10 @@ def cancel_subscription(request):
         profile.stripe_subscription_id = None
         profile.save(update_fields=["is_paying", "stripe_subscription_id"])
 
-        messages.success(request, "Abonnementet er avsluttet.")
+        messages.success(request, "Tilaus on peruutettu.")
     except Exception as e:
         print("Cancel subscription error:", e)
-        messages.error(request, "Kunne ikke avslutte abonnementet.")
+        messages.error(request, "Tilauksen peruuttaminen ei onnistunut.")
 
     return redirect("settings")
 
